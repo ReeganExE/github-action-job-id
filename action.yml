@@ -1,0 +1,49 @@
+name: 'Expose job details'
+description: 'Expose job ID/URLs to the environment variables'
+inputs:
+  expose-name:
+    description: Also expose job details as GH_JOB_${job.name}_*. Defaults to false.
+    required: false
+    default: 'false'
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const result = await github.rest.actions.listJobsForWorkflowRun({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            run_id: context.runId,
+          });
+          const isExposeName = '${{ inputs.expose-name }}' === 'true';
+          const newEnvs = result.data.jobs
+            .flatMap((job, index) => {
+              const byIndex = `
+          GH_JOB_${index}_ID=${job.id}
+          GH_JOB_${index}_RUN_URL=${job.run_url}
+          GH_JOB_${index}_URL=${job.url}
+          GH_JOB_${index}_HTML_URL=${job.html_url}
+          `;
+              const envs = [byIndex];
+              if (isExposeName) {
+                // simple escape
+                const jobName = job.name.replace(/ /g, '_').replace(/[^\w-]+/g, '');
+                const byName = `
+          GH_JOB_${jobName}_ID=${job.id}
+          GH_JOB_${jobName}_RUN_URL=${job.run_url}
+          GH_JOB_${jobName}_URL=${job.url}
+          GH_JOB_${jobName}_HTML_URL=${job.html_url}
+          `;
+                envs.push(byName);
+              }
+
+              return envs;
+            })
+            .join('\n');
+
+          fs.appendFile(process.env.GITHUB_ENV, newEnvs, function (err) {
+            if (err) throw err;
+            console.log('Saved!');
+          });
