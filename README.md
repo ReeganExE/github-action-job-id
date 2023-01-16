@@ -77,6 +77,19 @@ jobs:
 
 ```
 
+### Private repos
+The action needs `actions:read` permission to access the job list.
+Add the following `permissions` to your workflow job.  See [permission](https://docs.github.com/en/actions/security-guides/automatic-token-authentication#permissions-for-the-github_token).
+
+```yml
+# ...
+runs-on: ubuntu-latest
+permissions:
+  contents: read # default, for actions/checkout to work
+  actions: read # <== read
+# ...
+```
+
 # LICENSE
 
 AGPL-3.0 License
